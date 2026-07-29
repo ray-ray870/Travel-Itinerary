@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>ツアー進行管理</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#6C4F9C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Travel Itinerary">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBF7F0; --card:#FFFFFF; --ink:#332C3B; --muted:#8B8494; --line:#E7DFEF;
+    --purple:#6C4F9C; --purple-soft:#EDE6F6;
+    --pink:#E8637E; --pink-soft:#FCE7EC;
+    --orange:#E68A3B; --orange-soft:#FBEBDA;
+    --blue:#3E7BC4; --blue-soft:#E4EEFB;
+    --green:#3F9463; --green-soft:#E3F3E9;
+    --late:#D6455A; --late-soft:#FBE6E9;
+    --early:#2F7EC0; --early-soft:#E4F1FB;
+    --ontime:#8B8494;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper);
+    background-image:radial-gradient(circle at 1px 1px, #00000008 1px, transparent 0);
+    background-size:22px 22px;
+    color:var(--ink); font-family:"Noto Sans JP","Hiragino Sans",sans-serif;
+    -webkit-font-smoothing:antialiased; padding-bottom:60px;
+  }
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:linear-gradient(135deg,var(--purple) 0%, #8A6BC0 100%);
+    color:#fff; padding:16px 18px 14px; box-shadow:0 4px 16px rgba(108,79,156,0.25);
+  }
+  header.top .eyebrow{font-size:11px; letter-spacing:.14em; opacity:.85; font-weight:500;}
+  header.top h1{font-family:"Zen Maru Gothic",sans-serif; font-size:19px; font-weight:900; margin:2px 0 10px; line-height:1.35;}
+  .status-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .status-pill{background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.35); border-radius:999px; padding:6px 12px; font-size:12.5px; display:flex; align-items:center; gap:6px;}
+  .status-pill b{font-size:14px;}
+  .header-btn{background:#fff; color:var(--purple); border:none; border-radius:999px; font-weight:700; font-size:12.5px; padding:7px 14px; box-shadow:0 2px 6px rgba(0,0,0,.15);}
+  .header-btn:active{transform:scale(.96);}
+  .header-btn.ghost{background:rgba(255,255,255,.16); color:#fff; border:1px solid rgba(255,255,255,.4); box-shadow:none;}
+  .ml-auto{margin-left:auto;}
+
+  .tab-bar{display:flex; gap:6px; overflow-x:auto; padding:2px 0 2px; margin-top:2px; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
+  .tab-bar::-webkit-scrollbar{display:none;}
+  .tab-pill{flex:0 0 auto; padding:7px 14px; border-radius:999px; font-size:12.5px; font-weight:700; background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.3); white-space:nowrap;}
+  .tab-pill.active{background:#fff; color:var(--purple); border-color:#fff;}
+  .tab-pill.add{background:transparent; border:1px dashed rgba(255,255,255,.55); color:#fff;}
+
+  main{max-width:520px; margin:0 auto; padding:18px 14px 0;}
+
+  /* ---------- List screen ---------- */
+  .big-add-btn{
+    width:100%; background:var(--purple); color:#fff; border:none; border-radius:14px;
+    padding:14px; font-weight:700; font-size:14.5px; margin-bottom:16px;
+    box-shadow:0 3px 10px rgba(108,79,156,.25);
+  }
+  .big-add-btn:active{transform:scale(.98);}
+  .course-card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:14px 16px; margin-bottom:12px; box-shadow:0 2px 8px rgba(80,60,110,.05);
+  }
+  .course-card h3{margin:0 0 4px; font-size:16px; font-weight:700;}
+  .course-card .meta{font-size:12px; color:var(--muted); margin-bottom:10px;}
+  .course-card .actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .cc-btn{border:none; border-radius:999px; font-size:12px; font-weight:700; padding:7px 12px;}
+  .cc-start{background:var(--purple); color:#fff;}
+  .cc-edit{background:var(--purple-soft); color:var(--purple);}
+  .cc-dup{background:var(--early-soft); color:var(--early);}
+  .cc-del{background:var(--late-soft); color:var(--late);}
+  .empty-note{font-size:13px; color:var(--muted); text-align:center; padding:30px 10px; line-height:1.7;}
+
+  /* ---------- Edit screen ---------- */
+  .field-block{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:14px;}
+  .field-block label.f-label{font-size:11.5px; color:var(--muted); font-weight:700; display:block; margin-bottom:5px;}
+  .field-block input[type=text], .field-block textarea{
+    width:100%; border:1px solid var(--line); background:var(--paper); border-radius:9px;
+    padding:9px 10px; font-size:14px; font-family:inherit; color:var(--ink);
+  }
+  .field-block textarea{resize:vertical; min-height:44px;}
+  .field-block input[type=time]{border:1px solid var(--line); background:var(--paper); border-radius:9px; padding:8px 10px; font-family:"Zen Maru Gothic",sans-serif; font-weight:900; font-size:16px;}
+
+  .stop-editor{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:12px; position:relative;}
+  .stop-editor .se-head{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .se-num{width:26px; height:26px; border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12.5px; flex-shrink:0;}
+  .se-move{display:flex; gap:4px; margin-left:auto;}
+  .se-move button, .se-remove{border:1px solid var(--line); background:var(--paper); border-radius:8px; width:28px; height:28px; font-size:13px; color:var(--muted);}
+  .se-remove{color:var(--late); border-color:var(--late-soft);}
+  .se-row{display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; align-items:center;}
+  .se-row.cols input[type=text]{flex:1; min-width:120px;}
+  .se-type-toggle{display:flex; border:1px solid var(--line); border-radius:9px; overflow:hidden;}
+  .se-type-toggle button{border:none; background:var(--paper); padding:8px 12px; font-size:12.5px; color:var(--muted); font-weight:700;}
+  .se-type-toggle button.active{background:var(--purple); color:#fff;}
+  .se-num-field{display:flex; align-items:center; gap:5px;}
+  .se-num-field input{width:56px; border:1px solid var(--line); background:var(--paper); border-radius:8px; text-align:center; padding:6px 2px; font-weight:700; font-family:inherit;}
+  .se-num-field label{font-size:11.5px; color:var(--muted);}
+  .color-swatches{display:flex; gap:6px;}
+  .color-swatch{width:26px; height:26px; border-radius:50%; border:2px solid transparent; cursor:pointer;}
+  .color-swatch.selected{border-color:var(--ink);}
+  .flex-toggle{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--purple); font-weight:700;}
+  .flex-toggle input{width:16px; height:16px;}
+
+  .add-stop-btn{width:100%; border:2px dashed var(--purple); background:var(--purple-soft); color:var(--purple); border-radius:14px; padding:12px; font-weight:700; font-size:13.5px; margin-bottom:16px;}
+  .add-stop-btn:active{transform:scale(.98);}
+  .save-row{display:flex; gap:10px; margin-bottom:20px;}
+  .save-btn{flex:1; background:var(--purple); color:#fff; border:none; border-radius:12px; padding:13px; font-weight:700; font-size:14px;}
+  .cancel-btn{flex:0 0 auto; background:var(--card); border:1px solid var(--line); color:var(--muted); border-radius:12px; padding:13px 16px; font-weight:700; font-size:13px;}
+  .form-error{color:var(--late); font-size:12.5px; text-align:center; margin-bottom:10px;}
+
+  /* ---------- Run screen (schedule) ---------- */
+  .lead-arrival{background:var(--card); border-radius:16px; padding:14px 16px 16px; margin-bottom:18px; box-shadow:0 2px 10px rgba(80,60,110,.06); border:1px solid var(--line);}
+  .lead-row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .lead-arrival .label{font-size:12px; color:var(--muted); font-weight:500;}
+  .lead-arrival .time{font-family:"Zen Maru Gothic",sans-serif; font-size:26px; font-weight:900; color:var(--purple);}
+  .lead-arrival .delta{font-size:12.5px; font-weight:700; padding:4px 10px; border-radius:999px; white-space:nowrap;}
+  .target-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding-top:10px; margin-top:10px; border-top:1px dashed var(--line);}
+  .target-row .label{font-size:12px; color:var(--muted); font-weight:500;}
+  .target-row .shinkansen-input-wrap{display:flex; align-items:center; gap:6px; background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:4px 10px 4px 8px; flex-shrink:0;}
+  .target-row input[type=time]{border:none; background:transparent; font-family:"Zen Maru Gothic",sans-serif; font-weight:900; font-size:17px; color:var(--ink); width:100px; min-width:100px;}
+  .buffer-banner{margin-top:10px; border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .buffer-ok{background:var(--green-soft); color:var(--green);}
+  .buffer-warn{background:var(--late-soft); color:var(--late);}
+  .buffer-banner .msg{font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px;}
+  .buffer-banner .msg .big{font-size:16px;}
+  .adjust-btn{border:none; background:var(--late); color:#fff; font-weight:700; font-size:12px; border-radius:999px; padding:8px 13px; white-space:nowrap; box-shadow:0 2px 6px rgba(214,69,90,.35);}
+  .adjust-btn:active{transform:scale(.96);}
+  .expand-btn{border:none; background:var(--green); color:#fff; font-weight:700; font-size:12px; border-radius:999px; padding:8px 13px; white-space:nowrap; box-shadow:0 2px 6px rgba(63,148,99,.35);}
+  .expand-btn:active{transform:scale(.96);}
+  .adjust-note{font-size:11px; margin-top:6px; opacity:.85; width:100%;}
+
+  .timeline{position:relative;}
+  .connector{display:flex; align-items:center; gap:8px; margin-left:22px; padding:6px 0 6px 14px; border-left:3px dashed var(--line); min-height:14px;}
+  .connector .car{font-size:14px;}
+  .connector input{width:44px; border:none; background:var(--purple-soft); color:var(--purple); font-weight:700; font-size:12.5px; text-align:center; border-radius:6px; padding:3px 2px; font-family:inherit;}
+  .connector span.lbl{font-size:12px; color:var(--muted);}
+
+  .stop-card{display:flex; gap:12px; margin-bottom:2px;}
+  .badge-col{display:flex; flex-direction:column; align-items:center; width:36px; flex-shrink:0;}
+  .badge{width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:"Zen Maru Gothic",sans-serif; font-weight:900; font-size:14px; color:#fff; flex-shrink:0; z-index:2; box-shadow:0 2px 5px rgba(0,0,0,.15);}
+
+  .card{flex:1; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px 13px; box-shadow:0 2px 8px rgba(80,60,110,.05);}
+  .card .top-row{display:flex; align-items:flex-start; justify-content:space-between; gap:8px;}
+  .card h3{font-size:15px; margin:0 0 4px; font-weight:700; line-height:1.4;}
+  .card p.desc{font-size:12.5px; color:var(--muted); margin:0 0 10px; line-height:1.55;}
+
+  .time-block{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .time-input-wrap{display:flex; align-items:center; gap:6px; background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:4px 10px 4px 8px; flex-shrink:0;}
+  .time-input-wrap label{font-size:10.5px; color:var(--muted); font-weight:500; flex-shrink:0;}
+  .time-input-wrap input[type=time]{border:none; background:transparent; font-family:"Zen Maru Gothic",sans-serif; font-weight:900; font-size:16px; color:var(--ink); width:96px; min-width:96px;}
+  .now-btn{border:none; background:var(--purple-soft); color:var(--purple); font-size:11px; font-weight:700; border-radius:8px; padding:6px 8px;}
+  .now-btn:active{transform:scale(.94);}
+  .stay-edit{display:flex; align-items:center; gap:5px; margin-left:auto;}
+  .stay-edit label{font-size:10.5px; color:var(--muted);}
+  .stay-edit input{width:42px; border:1px solid var(--line); background:var(--paper); border-radius:8px; text-align:center; font-weight:700; font-size:12.5px; padding:4px 2px; font-family:inherit;}
+  .stay-human{font-size:11px; color:var(--purple); font-weight:700; white-space:nowrap;}
+  .delta-badge{font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap;}
+  .delta-late{background:var(--late-soft); color:var(--late);}
+  .delta-early{background:var(--early-soft); color:var(--early);}
+  .delta-ontime{background:#F0EDF3; color:var(--ontime);}
+  .planned-note{font-size:10.5px; color:#B4ACC0; margin-top:6px;}
+
+  .flex-card{border:2px solid var(--purple); background:linear-gradient(180deg, #FBF9FE 0%, #FFFFFF 60%);}
+  .flex-tag{display:inline-flex; align-items:center; gap:4px; background:var(--purple); color:#fff; font-size:10.5px; font-weight:700; border-radius:999px; padding:2px 9px; margin-bottom:6px;}
+  .flex-controls{display:flex; align-items:center; gap:6px; margin-top:8px; flex-wrap:wrap;}
+  .nudge-btn{border:1px solid var(--purple); background:#fff; color:var(--purple); font-weight:900; font-size:14px; width:30px; height:30px; border-radius:8px;}
+  .nudge-btn:active{transform:scale(.92);}
+  .fit-btn{border:none; background:var(--purple); color:#fff; font-weight:700; font-size:12px; border-radius:999px; padding:7px 12px;}
+  .fit-btn:active{transform:scale(.96);}
+  .flex-impact{font-size:11px; color:var(--muted); width:100%; margin-top:2px;}
+
+  footer.foot{max-width:520px; margin:22px auto 0; padding:0 14px; text-align:center; font-size:11.5px; color:var(--muted); line-height:1.7;}
+</style>
+</head>
+<body>
+
+<header class="top" id="topHeader"></header>
+<main id="mainArea"></main>
+<footer class="foot" id="footArea"></footer>
+
+<script>
+/* ============================================================
+   共通ユーティリティ
+   ============================================================ */
+const COLORS = ['purple','pink','orange','blue','green'];
+const COLOR_HEX = {purple:'#6C4F9C', pink:'#E8637E', orange:'#E68A3B', blue:'#3E7BC4', green:'#3F9463'};
+
+function toMin(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
+function toHHMM(mins){
+  mins = ((mins % 1440) + 1440) % 1440;
+  const h = Math.floor(mins/60).toString().padStart(2,'0');
+  const m = (mins%60).toString().padStart(2,'0');
+  return `${h}:${m}`;
+}
+function fmtDuration(mins){
+  mins = Math.max(0, Math.round(mins));
+  if(mins < 60) return `${mins}分`;
+  const h = Math.floor(mins/60), m = mins%60;
+  return m === 0 ? `${h}時間` : `${h}時間${m}分`;
+}
+function nowHHMM(){  const now = new Date();
+  return `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+}
+function uid(){ return 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7); }
+
+/* Compute the "planned" (no-override) schedule for a course template */
+function computePlannedTimes(course){
+  const times = [];
+  for(let i=0;i<course.stops.length;i++){
+    const s = course.stops[i];
+    let start = (i===0) ? toMin(course.startTime) : times[i-1].end + course.stops[i-1].travelToNext;
+    let end = (s.type === 'visit') ? start + s.stayMin : start;
+    times.push({start, end});
+  }
+  return times;
+}
+
+/* ============================================================
+   ストレージ
+   ============================================================ */
+/* GitHub Pages 版：ブラウザの localStorage に保存します（このスマホ・このブラウザだけに残ります） */
+async function listCourses(){
+  try{
+    const out = [];
+    for(let i=0; i<localStorage.length; i++){
+      const key = localStorage.key(i);
+      if(key && key.indexOf('course:') === 0){
+        try{
+          const raw = localStorage.getItem(key);
+          if(raw) out.push(JSON.parse(raw));
+        }catch(e){ /* skip unreadable entry */ }
+      }
+    }
+    out.sort((a,b)=> (a.createdAt||0) - (b.createdAt||0));
+    return out;
+  }catch(e){
+    console.error('listCourses error', e);
+    return [];
+  }
+}
+async function saveCourseToStorage(course){
+  course.updatedAt = Date.now();
+  if(!course.createdAt) course.createdAt = Date.now();
+  try{
+    localStorage.setItem('course:' + course.id, JSON.stringify(course));
+    return true;
+  }catch(e){ console.error('save error', e); return false; }
+}
+/* 一度削除した初期コースが再読み込みで復活しないよう、削除済みIDを記録します */
+function getDeletedSeedIds(){
+  try{
+    const raw = localStorage.getItem('deletedSeeds');
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function markSeedDeleted(id){
+  try{
+    const list = getDeletedSeedIds();
+    if(!list.includes(id)){
+      list.push(id);
+      localStorage.setItem('deletedSeeds', JSON.stringify(list));
+    }
+  }catch(e){ console.error('markSeedDeleted error', e); }
+}
+
+async function deleteCourseFromStorage(id){
+  try{ localStorage.removeItem('course:' + id); markSeedDeleted(id); return true; }
+  catch(e){ console.error('delete error', e); return false; }
+}
+
+const BANSEI_COURSE = {
+  id: 'bansei-kinenkan-course',
+  seedVersion: 3,
+  name: '知覧・万世特攻平和祈念館を巡る 平和学習コース',
+  startTime: '08:30',
+  flexIndex: 4,
+  stops: [
+    {title:'鹿児島中央駅 西口 出発', desc:'今日の旅のはじまり！ワクワクを胸に出発しましょう♪（有料道路区間有り／知覧までは休憩できません）', color:'purple', type:'point', stayMin:0, travelToNext:70},
+    {title:'知覧特攻平和会館', desc:'特攻に関する資料や遺品の見学、ジオラマや映像の鑑賞など、平和への想いを感じるひととき。', color:'pink', type:'visit', stayMin:100, travelToNext:10},
+    {title:'旬蒸terrace（ランチ）', desc:'地元の食材を使った蒸し料理が人気！せいろで味わう、彩り豊かで体も心も大満足のランチを♪', color:'orange', type:'visit', stayMin:70, travelToNext:10},
+    {title:'ホタル館 富屋食堂（資料館）', desc:'特攻隊員を支えた鳥濱トメさんゆかりの食堂を再現。当時の資料や写真から、温かい人の想いに触れます。', color:'blue', type:'visit', stayMin:50, travelToNext:45},
+    {title:'万世特攻平和祈念館', desc:'万世特攻基地の歴史を伝える貴重な施設。特攻の背景や遺品展示から、平和への祈りを感じられます。', color:'green', type:'visit', stayMin:50, travelToNext:75},
+    {title:'鹿児島中央駅 西口 到着', desc:'おつかれさまでした！またお会いしましょう♪', color:'pink', type:'point', stayMin:0, travelToNext:0},
+  ]
+};
+
+const STARBUCKS_COURSE = {
+  id: 'starbucks-course',
+  seedVersion: 4,
+  name: '知覧・スターバックスで楽しむ1日プラン',
+  startTime: '08:30',
+  flexIndex: 4,
+  stops: [
+    {title:'鹿児島中央駅 西口 出発', desc:'今日の旅のはじまり！ワクワクを胸に出発しましょう♪（有料道路区間有り／知覧までは休憩できません）', color:'purple', type:'point', stayMin:0, travelToNext:70},
+    {title:'知覧特攻平和会館', desc:'特攻に関する資料や遺品の見学、ジオラマや映像の鑑賞など、平和への想いを感じるひととき。', color:'pink', type:'visit', stayMin:120, travelToNext:10},
+    {title:'旬蒸terrace（ランチ）', desc:'地元の食材を使った蒸し料理が人気！せいろで味わう、彩り豊かで体も心も大満足のランチを♪', color:'orange', type:'visit', stayMin:70, travelToNext:10},
+    {title:'ホタル館 富屋食堂（資料館）', desc:'特攻隊員を支えた鳥濱トメさんゆかりの食堂を再現。当時の資料や写真から、温かい人の想いに触れます。', color:'blue', type:'visit', stayMin:50, travelToNext:70},
+    {title:'スターバックス コーヒー 鹿児島仙巌園店', desc:'旧薩摩藩主島津家ゆかりの登録有形文化財で、薩摩の歴史を感じる特別なスターバックス。桜島と錦江湾を望むロケーションでゆったりカフェタイムを♪', color:'green', type:'visit', stayMin:50, travelToNext:30},
+    {title:'鹿児島中央駅 西口 到着', desc:'おつかれさまでした！またお会いしましょう♪', color:'pink', type:'point', stayMin:0, travelToNext:0},
+  ]
+};
+
+/* ============================================================
+   画面状態
+   ============================================================ */
+let screen = 'run'; // 'run' | 'edit' | 'empty'
+let courseList = [];
+let activeCourseId = null;
+let runStates = {}; // courseId -> 実行状態（タブを切り替えても保持）
+let editingCourse = null;
+let runState = null; // 現在アクティブなコースの実行状態（runStates[activeCourseId] を指す）
+
+const header = document.getElementById('topHeader');
+const main = document.getElementById('mainArea');
+const foot = document.getElementById('footArea');
+
+async function boot(){
+  main.innerHTML = '<div class="empty-note">読み込み中…</div>';
+  courseList = await listCourses();
+  const deletedIds = new Set(getDeletedSeedIds());
+  let seeded = false;
+  const seedList = [BANSEI_COURSE, STARBUCKS_COURSE];
+  for(let si=0; si<seedList.length; si++){
+    const template = seedList[si];
+    if(deletedIds.has(template.id)) continue; // 利用者が意図的に削除したものは復活させない
+    const stored = courseList.find(c => c.id === template.id);
+    const storedVer = stored ? (stored.seedVersion || 1) : 0;
+    if(!stored || storedVer < (template.seedVersion || 1)){
+      const copy = JSON.parse(JSON.stringify(template));
+      copy.createdAt = stored ? (stored.createdAt || si + 1) : si + 1; // 並び順を維持
+      await saveCourseToStorage(copy);
+      delete runStates[template.id]; // 内容が変わったので進行状態を作り直す
+      seeded = true;
+    }
+  }
+  if(seeded) courseList = await listCourses();
+  if(courseList.length > 0){
+    switchToCourse(courseList[0].id);
+  } else {
+    showEmptyScreen();
+  }
+}
+
+/* ============================================================
+   タブ管理
+   ============================================================ */
+function ensureRunState(courseId){
+  if(runStates[courseId]) return runStates[courseId];
+  const course = courseList.find(c => c.id === courseId);
+  if(!course) return null;
+  const n = course.stops.length;
+  const rs = {
+    course,
+    plannedTimes: computePlannedTimes(course),
+    overrideStart: new Array(n).fill(null),
+    overrideEnd: new Array(n).fill(null),
+    stayMin: course.stops.map(s => s.stayMin ?? 0),
+    travelMin: course.stops.map(s => s.travelToNext ?? 0),
+    targetArrival: null,
+    history: [],
+  };
+  runStates[courseId] = rs;
+  const times = computeRunSchedule(rs);
+  rs.targetArrival = toHHMM(times[n-1].start);
+  return rs;
+}
+
+function switchToCourse(courseId){
+  activeCourseId = courseId;
+  runState = ensureRunState(courseId);
+  if(!runState){ showEmptyScreen(); return; }
+  showRunScreen();
+}
+
+function showEmptyScreen(){
+  screen = 'empty';
+  activeCourseId = null;
+  header.innerHTML = `
+    <div class="eyebrow">MY TOUR COURSES</div>
+    <h1>ツアー進行管理</h1>
+  `;
+  foot.innerHTML = '';
+  main.innerHTML = `
+    <button class="big-add-btn" id="newCourseBtn">＋ 新しいコースを作る</button>
+    <div class="empty-note">まだコースがありません。<br>「＋ 新しいコースを作る」から始めましょう。</div>
+  `;
+  document.getElementById('newCourseBtn').addEventListener('click', openNewCourseEditor);
+}
+
+function openNewCourseEditor(){
+  editingCourse = { id: uid(), name:'新しいコース', startTime:'09:00', flexIndex:-1,
+    stops:[
+      {title:'出発地点', desc:'', color:'purple', type:'point', stayMin:0, travelToNext:30},
+      {title:'到着地点', desc:'', color:'pink', type:'point', stayMin:0, travelToNext:0},
+    ]};
+  showEditScreen();
+}
+
+async function duplicateCourse(id){
+  const course = courseList.find(c=>c.id===id);
+  if(!course) return;
+  const copy = JSON.parse(JSON.stringify(course));
+  copy.id = uid();
+  copy.name = course.name + 'のコピー';
+  await saveCourseToStorage(copy);
+  courseList = await listCourses();
+  switchToCourse(copy.id);
+}
+
+async function deleteCourse(id){
+  const course = courseList.find(c=>c.id===id);
+  if(!course) return;
+  if(!confirm(`「${course.name}」を削除しますか？この操作は取り消せません。`)) return;
+  await deleteCourseFromStorage(id);
+  delete runStates[id];
+  courseList = await listCourses();
+  if(courseList.length > 0){
+    switchToCourse(courseList[0].id);
+  } else {
+    showEmptyScreen();
+  }
+}
+
+function renderTabBar(){
+  let html = `<div class="tab-bar">`;
+  for(const c of courseList){
+    html += `<div class="tab-pill ${c.id===activeCourseId ? 'active' : ''}" data-tab="${c.id}">${escapeHtml(c.name)}</div>`;
+  }
+  html += `<div class="tab-pill add" id="addTabBtn">＋ 新規</div>`;
+  html += `</div>`;
+  return html;
+}
+
+function bindTabBar(){
+  main; // no-op, tab bar lives in header
+  header.querySelectorAll('[data-tab]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const id = el.dataset.tab;
+      if(id !== activeCourseId) switchToCourse(id);
+    });
+  });
+  const addBtn = document.getElementById('addTabBtn');
+  if(addBtn) addBtn.addEventListener('click', openNewCourseEditor);
+}
+
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+/* ============================================================
+   2) コース編集画面
+   ============================================================ */
+function backFromEdit(){
+  if(activeCourseId && courseList.some(c => c.id === activeCourseId)){
+    switchToCourse(activeCourseId);
+  } else if(courseList.length > 0){
+    switchToCourse(courseList[0].id);
+  } else {
+    showEmptyScreen();
+  }
+}
+
+function showEditScreen(){
+  screen = 'edit';
+  header.innerHTML = `
+    <div class="eyebrow">EDIT COURSE</div>
+    <h1>コースを編集</h1>
+    <div class="status-row">
+      <button class="header-btn ghost" id="backToListBtn">← 戻る</button>
+    </div>
+  `;
+  foot.innerHTML = '';
+  document.getElementById('backToListBtn').addEventListener('click', backFromEdit);
+
+  renderEditBody();
+}
+
+function renderEditBody(){
+  let html = `
+    <div class="field-block">
+      <label class="f-label">コース名</label>
+      <input type="text" id="courseNameInput" value="${escapeHtml(editingCourse.name)}">
+    </div>
+    <div class="field-block">
+      <label class="f-label">最初のスポットの出発・到着予定時刻</label>
+      <input type="time" id="courseStartInput" value="${editingCourse.startTime}">
+    </div>
+  `;
+
+  editingCourse.stops.forEach((s, i)=>{
+    html += `
+      <div class="stop-editor">
+        <div class="se-head">
+          <div class="se-num" style="background:${COLOR_HEX[s.color]}">${i+1}</div>
+          <div class="se-type-toggle">
+            <button data-idx="${i}" data-type="point" class="${s.type==='point' ? 'active' : ''}">地点</button>
+            <button data-idx="${i}" data-type="visit" class="${s.type==='visit' ? 'active' : ''}">観光</button>
+          </div>
+          <div class="se-move">
+            <button data-idx="${i}" data-move="up" ${i===0 ? 'disabled' : ''}>↑</button>
+            <button data-idx="${i}" data-move="down" ${i===editingCourse.stops.length-1 ? 'disabled' : ''}>↓</button>
+            <button class="se-remove" data-idx="${i}" data-move="remove" ${editingCourse.stops.length<=2 ? 'disabled' : ''}>✕</button>
+          </div>
+        </div>
+        <div class="se-row cols">
+          <input type="text" placeholder="スポット名" data-idx="${i}" data-field="title" value="${escapeHtml(s.title)}">
+        </div>
+        <div class="se-row cols">
+          <input type="text" placeholder="説明（任意）" data-idx="${i}" data-field="desc" value="${escapeHtml(s.desc||'')}">
+        </div>
+        <div class="se-row">
+          ${s.type==='visit' ? `
+            <div class="se-num-field">
+              <label>滞在</label>
+              <input type="number" min="0" step="5" data-idx="${i}" data-field="stayMin" value="${s.stayMin}">
+              <label>分</label>
+            </div>
+          ` : ''}
+          ${i < editingCourse.stops.length-1 ? `
+            <div class="se-num-field">
+              <label>🚗次へ</label>
+              <input type="number" min="0" step="5" data-idx="${i}" data-field="travelToNext" value="${s.travelToNext}">
+              <label>分</label>
+            </div>
+          ` : ''}
+          <div class="color-swatches">
+            ${COLORS.map(c=>`<div class="color-swatch ${c===s.color?'selected':''}" style="background:${COLOR_HEX[c]}" data-idx="${i}" data-color="${c}"></div>`).join('')}
+          </div>
+        </div>
+        ${s.type==='visit' ? `
+          <label class="flex-toggle">
+            <input type="radio" name="flexRadio" data-idx="${i}" ${editingCourse.flexIndex===i ? 'checked' : ''}>
+            🎯 このスポットを「到着時刻の調整弁」にする
+          </label>
+        ` : ''}
+      </div>
+    `;
+  });
+
+  html += `<button class="add-stop-btn" id="addStopBtn">＋ スポットを追加</button>`;
+  html += `<div class="form-error" id="formError"></div>`;
+  html += `
+    <div class="save-row">
+      <button class="cancel-btn" id="cancelEditBtn">キャンセル</button>
+      <button class="save-btn" id="saveCourseBtn">このコースを保存</button>
+    </div>
+  `;
+
+  main.innerHTML = html;
+  bindEditEvents();
+}
+
+function bindEditEvents(){
+  document.getElementById('courseNameInput').addEventListener('input', e=>{
+    editingCourse.name = e.target.value;
+  });
+  document.getElementById('courseStartInput').addEventListener('change', e=>{
+    editingCourse.startTime = e.target.value;
+  });
+
+  main.querySelectorAll('[data-field]').forEach(el=>{
+    el.addEventListener('input', e=>{
+      const idx = +e.target.dataset.idx;
+      const field = e.target.dataset.field;
+      if(field === 'stayMin' || field === 'travelToNext'){
+        editingCourse.stops[idx][field] = Math.max(0, +e.target.value || 0);
+      } else {
+        editingCourse.stops[idx][field] = e.target.value;
+      }
+    });
+  });
+
+  main.querySelectorAll('[data-type]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const idx = +e.target.dataset.idx;
+      const type = e.target.dataset.type;
+      editingCourse.stops[idx].type = type;
+      if(type === 'point' && editingCourse.flexIndex === idx) editingCourse.flexIndex = -1;
+      renderEditBody();
+    });
+  });
+
+  main.querySelectorAll('[data-color]').forEach(el=>{
+    el.addEventListener('click', e=>{
+      const idx = +e.target.dataset.idx;
+      editingCourse.stops[idx].color = e.target.dataset.color;
+      renderEditBody();
+    });
+  });
+
+  main.querySelectorAll('[name=flexRadio]').forEach(el=>{
+    el.addEventListener('change', e=>{
+      editingCourse.flexIndex = +e.target.dataset.idx;
+    });
+  });
+
+  main.querySelectorAll('[data-move]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const idx = +e.target.dataset.idx;
+      const move = e.target.dataset.move;
+      if(move === 'up' && idx > 0){
+        [editingCourse.stops[idx-1], editingCourse.stops[idx]] = [editingCourse.stops[idx], editingCourse.stops[idx-1]];
+        remapFlexIndex(idx, idx-1);
+      } else if(move === 'down' && idx < editingCourse.stops.length-1){
+        [editingCourse.stops[idx+1], editingCourse.stops[idx]] = [editingCourse.stops[idx], editingCourse.stops[idx+1]];
+        remapFlexIndex(idx, idx+1);
+      } else if(move === 'remove'){
+        if(editingCourse.stops.length > 2){
+          editingCourse.stops.splice(idx, 1);
+          if(editingCourse.flexIndex === idx) editingCourse.flexIndex = -1;
+          else if(editingCourse.flexIndex > idx) editingCourse.flexIndex -= 1;
+        }
+      }
+      renderEditBody();
+    });
+  });
+
+  document.getElementById('addStopBtn').addEventListener('click', ()=>{
+    const n = editingCourse.stops.length;
+    editingCourse.stops.splice(n-1, 0, {
+      title:'新しいスポット', desc:'', color: COLORS[n % COLORS.length], type:'visit', stayMin:30, travelToNext:15
+    });
+    renderEditBody();
+  });
+
+  document.getElementById('cancelEditBtn').addEventListener('click', backFromEdit);
+
+  document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
+    const errEl = document.getElementById('formError');
+    if(!editingCourse.name.trim()){ errEl.textContent = 'コース名を入力してください。'; return; }
+    if(editingCourse.stops.length < 2){ errEl.textContent = 'スポットは2つ以上必要です。'; return; }
+    if(editingCourse.stops.some(s=>!s.title.trim())){ errEl.textContent = 'すべてのスポットに名称を入力してください。'; return; }
+    errEl.textContent = '';
+    const ok = await saveCourseToStorage(editingCourse);
+    if(!ok){ errEl.textContent = '保存に失敗しました。もう一度お試しください。'; return; }
+    delete runStates[editingCourse.id]; // テンプレートが変わったので実行状態を作り直す
+    courseList = await listCourses();
+    switchToCourse(editingCourse.id);
+  });
+}
+
+function remapFlexIndex(a, b){
+  if(editingCourse.flexIndex === a) editingCourse.flexIndex = b;
+  else if(editingCourse.flexIndex === b) editingCourse.flexIndex = a;
+}
+
+/* ============================================================
+   3) 進行管理（実行）画面
+   ============================================================ */
+/* 上部で入力した「間に合わせたい到着時刻」を新しい計画の基準にする。
+   差分は調整弁スポットの計画滞在で吸収し、調整弁がなければ最終区間の移動時間で吸収します。 */
+function rebaselineToTarget(){
+  const rs = runState;
+  const stops = rs.course.stops;
+  const n = stops.length;
+  const stays = stops.map(s => s.stayMin ?? 0);
+  const travels = stops.map(s => s.travelToNext ?? 0);
+
+  const calc = () => {
+    const t = [];
+    for(let i=0;i<n;i++){
+      const start = (i===0) ? toMin(rs.course.startTime) : t[i-1].end + travels[i-1];
+      const end = (stops[i].type === 'visit') ? start + stays[i] : start;
+      t.push({start, end});
+    }
+    return t;
+  };
+
+  let t = calc();
+  const diff = toMin(rs.targetArrival) - t[n-1].start;
+  const fi = rs.course.flexIndex;
+  if(fi >= 0 && stops[fi] && stops[fi].type === 'visit'){
+    stays[fi] = Math.max(0, stays[fi] + diff);
+    // 実際の進行側も同じ値に揃える（まだ通過していない調整弁スポットのみ）
+    if(rs.overrideStart[fi] === null && rs.overrideEnd[fi] === null){
+      rs.stayMin[fi] = stays[fi];
+    }
+  } else if(n >= 2){
+    travels[n-2] = Math.max(0, travels[n-2] + diff);
+    rs.travelMin[n-2] = travels[n-2];
+  }
+  rs.plannedTimes = calc();
+}
+
+function computeRunSchedule(rsArg){
+  const rs = rsArg || runState;
+  const stops = rs.course.stops;
+  const times = [];
+  for(let i=0;i<stops.length;i++){
+    let startMin;
+    if(rs.overrideStart[i] !== null){
+      startMin = toMin(rs.overrideStart[i]);
+    } else if(i === 0){
+      startMin = toMin(rs.course.startTime);
+    } else {
+      startMin = times[i-1].end + rs.travelMin[i-1];
+    }
+    let endMin;
+    if(stops[i].type === 'visit'){
+      endMin = (rs.overrideEnd[i] !== null) ? toMin(rs.overrideEnd[i]) : startMin + rs.stayMin[i];
+    } else {
+      endMin = startMin;
+    }
+    times.push({start:startMin, end:endMin});
+  }
+  return times;
+}
+
+function deltaLabel(actualMin, plannedMin){
+  const diff = actualMin - plannedMin;
+  if(diff === 0) return {text:'計画通り', cls:'delta-ontime'};
+  if(diff > 0) return {text:`${diff}分遅れ`, cls:'delta-late'};
+  return {text:`${-diff}分前倒し`, cls:'delta-early'};
+}
+
+function minStayFor(i){
+  const rs = runState;
+  if(i === rs.course.flexIndex) return 10;
+  const planned = rs.course.stops[i].stayMin;
+  return Math.max(10, Math.round((planned * 0.5) / 5) * 5);
+}
+function maxStayFor(i){
+  // 滞在を伸ばせる上限（計画の1.5倍、最低でも計画+15分）
+  const planned = runState.course.stops[i].stayMin || 0;
+  return Math.max(planned + 15, Math.round((planned * 1.5) / 5) * 5);
+}
+
+const LONG_DRIVE_MIN = 30; // これ以上の移動をまたいで滞在時間は延ばさない
+const MAX_EXPAND_STOPS = 2; // 一度に延ばすのは最大2スポットまで
+
+/* 余裕を振り分ける対象スポットを決める。
+   「次の観光地から、長距離移動をまたがない範囲で最大2か所」。
+   例）最初の移動で早まった → 知覧＋ランチ / ホタル館の手前で早まった → ホタル館のみ
+       ホタル館からの移動で早まった → その先のスポット / それ以降は最後の移動が吸収 */
+function expandTargets(){
+  const rs = runState;
+  const stops = rs.course.stops;
+  const n = stops.length;
+
+  // 進行位置：時刻を記録した最も後ろのスポットより前は「通過済み」とみなす
+  let progressIdx = 0;
+  for(let i=0;i<n;i++){
+    if(rs.overrideStart[i] !== null || rs.overrideEnd[i] !== null) progressIdx = i;
+  }
+
+  const picked = [];
+  for(let i=progressIdx; i<n; i++){
+    if(stops[i].type !== 'visit' || rs.overrideEnd[i] !== null) continue;
+    picked.push(i);
+    if(picked.length >= MAX_EXPAND_STOPS) break;
+    if((rs.travelMin[i] ?? 0) >= LONG_DRIVE_MIN) break; // 長距離移動をまたがない
+  }
+  return picked;
+}
+
+/* 前倒しで浮いた時間を、対象スポットの滞在時間に5分ずつ均等に振り分ける。
+   対象が上限に達したら、残りは最後の移動時間が吸収します（＝そのまま余裕として残ります）。 */
+function distributeSurplusToStays(){
+  const rs = runState;
+  const stops = rs.course.stops;
+  const n = stops.length;
+  const times = computeRunSchedule();
+  let surplus = toMin(rs.targetArrival) - times[n-1].start;
+  if(surplus <= 0) return;
+
+  const targets = expandTargets();
+  if(targets.length === 0) return;
+
+  let guard = 0;
+  while(surplus > 0 && guard < 500){
+    guard++;
+    let placed = false;
+    for(const i of targets){
+      if(surplus <= 0) break;
+      const room = Math.max(0, maxStayFor(i) - rs.stayMin[i]);
+      if(room <= 0) continue;
+      const add = Math.min(5, surplus, room);
+      rs.stayMin[i] += add;
+      surplus -= add;
+      placed = true;
+    }
+    if(!placed) break;
+  }
+  renderRun();
+}
+
+function pushHistory(){
+  const rs = runState;
+  rs.history.push({
+    overrideStart: [...rs.overrideStart],
+    overrideEnd: [...rs.overrideEnd],
+    stayMin: [...rs.stayMin],
+    travelMin: [...rs.travelMin],
+    targetArrival: rs.targetArrival,
+    plannedTimes: rs.plannedTimes.map(t => ({start:t.start, end:t.end}))
+  });
+  if(rs.history.length > 30) rs.history.shift();
+}
+function undo(){
+  const rs = runState;
+  if(rs.history.length === 0) return;
+  const prev = rs.history.pop();
+  rs.overrideStart = prev.overrideStart;
+  rs.overrideEnd = prev.overrideEnd;
+  rs.stayMin = prev.stayMin;
+  rs.travelMin = prev.travelMin;
+  rs.targetArrival = prev.targetArrival;
+  if(prev.plannedTimes) rs.plannedTimes = prev.plannedTimes;
+  renderRun();
+}
+
+function showRunScreen(){
+  screen = 'run';
+  header.innerHTML = `
+    <div class="eyebrow">MY TOUR COURSES</div>
+    ${renderTabBar()}
+    <h1 style="margin-top:8px;">${escapeHtml(runState.course.name)}</h1>
+    <div class="status-row">
+      <button class="header-btn ghost" id="editCourseBtn">✏️ 編集</button>
+      <button class="header-btn ghost" id="dupCourseBtn">⧉ 複製</button>
+      <button class="header-btn ghost" id="delCourseBtn">🗑 削除</button>
+      <button class="header-btn ml-auto" id="undoBtn" style="opacity:.5;">↩ 1つ戻る</button>
+      <button class="header-btn" id="resetRunBtn">計画時刻に戻す</button>
+    </div>
+  `;
+  bindTabBar();
+  document.getElementById('editCourseBtn').addEventListener('click', ()=>{
+    editingCourse = JSON.parse(JSON.stringify(runState.course));
+    showEditScreen();
+  });
+  document.getElementById('dupCourseBtn').addEventListener('click', ()=>{
+    duplicateCourse(activeCourseId);
+  });
+  document.getElementById('delCourseBtn').addEventListener('click', ()=>{
+    deleteCourse(activeCourseId);
+  });
+  document.getElementById('resetRunBtn').addEventListener('click', ()=>{
+    pushHistory();
+    const rs = runState;
+    const n = rs.course.stops.length;
+    rs.overrideStart = new Array(n).fill(null);
+    rs.overrideEnd = new Array(n).fill(null);
+    rs.stayMin = rs.course.stops.map(s => s.stayMin ?? 0);
+    rs.travelMin = rs.course.stops.map(s => s.travelToNext ?? 0);
+    rs.plannedTimes = computePlannedTimes(rs.course);
+    rs.targetArrival = toHHMM(computeRunSchedule()[n-1].start);
+    renderRun();
+  });
+  document.getElementById('undoBtn').addEventListener('click', undo);
+
+  foot.innerHTML = `
+    各カードの時刻をタップすると、実際の到着・出発時刻を入力できます。<br>
+    以降の予定は移動時間・滞在時間をもとに自動で調整されます。
+  `;
+
+  renderRun();
+}
+
+function renderRun(){
+  const rs = runState;
+  const stops = rs.course.stops;
+  const flexIndex = rs.course.flexIndex;
+  const times = computeRunSchedule();
+
+  let html = `
+    <div class="lead-arrival">
+      <div class="lead-row">
+        <div>
+          <div class="label">${escapeHtml(stops[stops.length-1].title)} 予定（更新後）</div>
+          <div class="time" id="finalArrival">--:--</div>
+        </div>
+        <div class="delta delta-ontime" id="finalDelta">計画通り</div>
+      </div>
+      <div class="target-row">
+        <div class="label">🎯 間に合わせたい到着時刻</div>
+        <div class="shinkansen-input-wrap">
+          <input type="time" id="targetInput" value="${rs.targetArrival}">
+        </div>
+      </div>
+      <div class="buffer-banner buffer-ok" id="bufferBanner">
+        <div class="msg"><span class="big">✅</span>目標まで余裕あり</div>
+      </div>
+    </div>
+    <div class="timeline" id="timeline"></div>
+  `;
+  main.innerHTML = html;
+
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = '';
+
+  stops.forEach((stop, i)=>{
+    const card = document.createElement('div');
+    card.className = 'stop-card';
+
+    const badgeCol = document.createElement('div');
+    badgeCol.className = 'badge-col';
+    badgeCol.innerHTML = `<div class="badge" style="background:${COLOR_HEX[stop.color]}">${i+1}</div>`;
+    card.appendChild(badgeCol);
+
+    const cardBody = document.createElement('div');
+    cardBody.className = i === flexIndex ? 'card flex-card' : 'card';
+
+    const planned = deltaLabel(times[i].start, rs.plannedTimes[i].start);
+    let bodyHtml = `
+      <div class="top-row">
+        <div>
+          ${i === flexIndex ? '<div class="flex-tag">🎯 到着時刻の調整弁</div><br>' : ''}
+          <h3 style="display:inline;">${escapeHtml(stop.title)}</h3>
+        </div>
+        <span class="delta-badge ${planned.cls}">${planned.text}</span>
+      </div>
+      ${stop.desc ? `<p class="desc">${escapeHtml(stop.desc)}</p>` : ''}
+    `;
+
+    if(stop.type === 'visit'){
+      const departLabel = rs.overrideEnd[i] !== null ? '出発（実測）' : '出発（予定）';
+      const actualStay = times[i].end - times[i].start;
+      bodyHtml += `
+        <div class="time-block">
+          <div class="time-input-wrap">
+            <label>到着</label>
+            <input type="time" data-idx="${i}" class="start-input" value="${toHHMM(times[i].start)}">
+          </div>
+          <button class="now-btn now-btn-start" data-idx="${i}">今の時刻</button>
+        </div>
+        <div class="time-block" style="margin-top:6px;">
+          <div class="time-input-wrap">
+            <label>${departLabel}</label>
+            <input type="time" data-idx="${i}" class="end-input" value="${toHHMM(times[i].end)}">
+          </div>
+          <button class="now-btn now-btn-end" data-idx="${i}">今の時刻</button>
+          <div class="stay-edit">
+            <label>滞在</label>
+            <input type="number" min="${minStayFor(i)}" ${i===flexIndex ? `max="${flexMaxFor(i)}"` : ''} step="5" class="stay-input" data-idx="${i}" value="${actualStay}">
+            <label>分</label>
+            ${actualStay >= 60 ? `<span class="stay-human">＝${fmtDuration(actualStay)}</span>` : ''}
+          </div>
+        </div>
+      `;
+    } else {
+      bodyHtml += `
+        <div class="time-block">
+          <div class="time-input-wrap">
+            <label>${i===0 ? '出発' : '到着'}</label>
+            <input type="time" data-idx="${i}" class="start-input" value="${toHHMM(times[i].start)}">
+          </div>
+          <button class="now-btn now-btn-start" data-idx="${i}">今の時刻</button>
+        </div>
+      `;
+    }
+
+    if(i === flexIndex){
+      bodyHtml += `
+        <div class="flex-controls">
+          <button class="nudge-btn" data-nudge="-15">−15</button>
+          <button class="nudge-btn" data-nudge="-5">−5</button>
+          <button class="nudge-btn" data-nudge="5">+5</button>
+          <button class="nudge-btn" data-nudge="15">+15</button>
+          <button class="fit-btn" id="fitFlexBtn">目標到着にぴったり合わせる</button>
+          <div class="flex-impact">ここの滞在時間を伸縮すると、最終到着時刻がそのまま動きます</div>
+        </div>
+      `;
+    }
+
+    const plannedStay = rs.plannedTimes[i].end - rs.plannedTimes[i].start;
+    const plannedEndTxt = stop.type==='visit'
+      ? ` 〜 ${toHHMM(rs.plannedTimes[i].end)}（滞在 ${fmtDuration(plannedStay)}）`
+      : '';
+    bodyHtml += `<div class="planned-note">計画時刻：${toHHMM(rs.plannedTimes[i].start)}${plannedEndTxt}</div>`;
+
+    cardBody.innerHTML = bodyHtml;
+    card.appendChild(cardBody);
+    tl.appendChild(card);
+
+    if(i < stops.length - 1){
+      const conn = document.createElement('div');
+      conn.className = 'connector';
+      conn.style.borderColor = COLOR_HEX[stop.color];
+      conn.innerHTML = `
+        <span class="car">🚗</span>
+        <span class="lbl">移動</span>
+        <input type="number" min="0" step="5" class="travel-input" data-idx="${i}" value="${rs.travelMin[i]}">
+        <span class="lbl">分</span>
+        ${rs.travelMin[i] >= 60 ? `<span class="stay-human">＝${fmtDuration(rs.travelMin[i])}</span>` : ''}
+      `;
+      tl.appendChild(conn);
+    }
+  });
+
+  // final summary
+  const lastIdx = stops.length - 1;
+  const finalActual = times[lastIdx].start;
+  const finalPlanned = rs.plannedTimes[lastIdx].start;
+  const fd = deltaLabel(finalActual, finalPlanned);
+  document.getElementById('finalArrival').textContent = toHHMM(finalActual) + '頃';
+  const fdEl = document.getElementById('finalDelta');
+  fdEl.textContent = fd.text;
+  fdEl.className = 'delta ' + fd.cls;
+
+  document.getElementById('targetInput').value = rs.targetArrival;
+
+  const targetMin = toMin(rs.targetArrival);
+  const overrun = finalActual - targetMin;
+  const banner = document.getElementById('bufferBanner');
+
+  if(overrun <= 0){
+    banner.className = 'buffer-banner buffer-ok';
+    const surplus = -overrun;
+    const tgts = expandTargets();
+    const expandable = tgts.reduce((sum, i) => sum + Math.max(0, maxStayFor(i) - rs.stayMin[i]), 0);
+    if(surplus >= 5 && expandable > 0){
+      const names = tgts.map(i => escapeHtml(stops[i].title)).join('・');
+      banner.innerHTML = `
+        <div class="msg"><span class="big">✅</span>目標まで <b>${surplus}分</b> の余裕</div>
+        <button class="expand-btn" id="expandBtn">余裕を滞在時間にまわす</button>
+        <div class="adjust-note">${names} の滞在時間に5分ずつ均等に振り分けます</div>
+      `;
+    } else {
+      banner.innerHTML = `<div class="msg"><span class="big">✅</span>目標まで <b>${surplus}分</b> の余裕</div>`;
+    }
+  } else {
+    banner.className = 'buffer-banner buffer-warn';
+    const reducibleTotal = stops.reduce((sum, s, i) => {
+      if(s.type !== 'visit' || rs.overrideStart[i] !== null || rs.overrideEnd[i] !== null) return sum;
+      return sum + Math.max(0, rs.stayMin[i] - minStayFor(i));
+    }, 0);
+    if(reducibleTotal > 0){
+      const flexNote = flexIndex >= 0 ? `${escapeHtml(stops[flexIndex].title)}の滞在を詰めて調整` : '残りの滞在時間を詰めて調整';
+      banner.innerHTML = `
+        <div class="msg"><span class="big">⚠️</span>このままだと目標より <b>${overrun}分遅れ</b></div>
+        <button class="adjust-btn" id="adjustBtn">${flexNote}</button>
+        <div class="adjust-note">未通過の観光スポットの滞在時間から自動で短縮します（移動時間は変更しません）</div>
+      `;
+    } else {
+      banner.innerHTML = `
+        <div class="msg"><span class="big">⚠️</span>目標より <b>${overrun}分遅れ</b>（滞在時間はこれ以上詰められません）</div>
+        <div class="adjust-note">各スポットの滞在は最低ラインに達しています。移動時間の見直しや、スポットの省略をご検討ください。</div>
+      `;
+    }
+  }
+
+  bindRunEvents();
+}
+
+function bindRunEvents(){
+  const rs = runState;
+
+  main.querySelectorAll('.start-input').forEach(el=>{
+    el.addEventListener('change', e=>{
+      pushHistory();
+      rs.overrideStart[+e.target.dataset.idx] = e.target.value;
+      renderRun();
+    });
+  });
+  main.querySelectorAll('.now-btn-start').forEach(el=>{
+    el.addEventListener('click', e=>{
+      pushHistory();
+      rs.overrideStart[+e.target.dataset.idx] = nowHHMM();
+      renderRun();
+    });
+  });
+  main.querySelectorAll('.end-input').forEach(el=>{
+    el.addEventListener('change', e=>{
+      pushHistory();
+      rs.overrideEnd[+e.target.dataset.idx] = e.target.value;
+      renderRun();
+    });
+  });
+  main.querySelectorAll('.now-btn-end').forEach(el=>{
+    el.addEventListener('click', e=>{
+      pushHistory();
+      rs.overrideEnd[+e.target.dataset.idx] = nowHHMM();
+      renderRun();
+    });
+  });
+  main.querySelectorAll('.stay-input').forEach(el=>{
+    el.addEventListener('change', e=>{
+      const idx = +e.target.dataset.idx;
+      const raw = e.target.value.trim();
+      if(raw === '' || isNaN(Number(raw))){ renderRun(); return; } // 無効入力は元の値に戻す
+      pushHistory();
+      rs.stayMin[idx] = Math.max(0, Number(raw));
+      rs.overrideEnd[idx] = null;
+      renderRun();
+    });
+  });
+  main.querySelectorAll('.travel-input').forEach(el=>{
+    el.addEventListener('change', e=>{
+      const idx = +e.target.dataset.idx;
+      const raw = e.target.value.trim();
+      if(raw === '' || isNaN(Number(raw))){ renderRun(); return; } // 無効入力は元の値に戻す
+      pushHistory();
+      rs.travelMin[idx] = Math.max(0, Number(raw));
+      renderRun();
+    });
+  });
+
+  const targetInput = document.getElementById('targetInput');
+  if(targetInput){
+    targetInput.addEventListener('change', e=>{
+      pushHistory();
+      rs.targetArrival = e.target.value;
+      rebaselineToTarget();
+      renderRun();
+    });
+  }
+
+  const expandBtn = document.getElementById('expandBtn');
+  if(expandBtn){
+    expandBtn.addEventListener('click', ()=>{
+      pushHistory();
+      distributeSurplusToStays();
+    });
+  }
+
+  const adjustBtn = document.getElementById('adjustBtn');
+  if(adjustBtn){
+    adjustBtn.addEventListener('click', ()=>{
+      pushHistory();
+      autoAdjustToTarget();
+    });
+  }
+  main.querySelectorAll('.nudge-btn').forEach(el=>{
+    el.addEventListener('click', e=>{
+      pushHistory();
+      nudgeFlex(+e.target.dataset.nudge);
+    });
+  });
+  const fitFlexBtn = document.getElementById('fitFlexBtn');
+  if(fitFlexBtn){
+    fitFlexBtn.addEventListener('click', ()=>{
+      pushHistory();
+      fitFlexToTarget();
+    });
+  }
+
+  const undoBtn = document.getElementById('undoBtn');
+  if(undoBtn){
+    undoBtn.disabled = rs.history.length === 0;
+    undoBtn.style.opacity = rs.history.length === 0 ? '.5' : '1';
+  }
+}
+
+function flexMaxFor(i){
+  // 計画滞在の2倍か90分の大きい方まで伸ばせる（コースごとに柔軟に）
+  const planned = runState.course.stops[i].stayMin || 0;
+  return Math.max(90, planned * 2);
+}
+
+function fitFlexToTarget(){
+  const rs = runState;
+  const flexIndex = rs.course.flexIndex;
+  if(flexIndex < 0) return;
+  const times = computeRunSchedule();
+  const flexStart = times[flexIndex].start;
+  const travelAfter = rs.travelMin[flexIndex];
+  const needed = toMin(rs.targetArrival) - travelAfter - flexStart;
+  rs.stayMin[flexIndex] = Math.min(flexMaxFor(flexIndex), Math.max(minStayFor(flexIndex), needed));
+  rs.overrideEnd[flexIndex] = null;
+
+  // 調整弁だけで届かない場合は、他の未通過スポットからも詰める
+  const after = computeRunSchedule();
+  if(after[rs.course.stops.length-1].start > toMin(rs.targetArrival)){
+    autoAdjustToTarget();
+    return;
+  }
+  renderRun();
+}
+function nudgeFlex(delta){
+  const rs = runState;
+  const flexIndex = rs.course.flexIndex;
+  if(flexIndex < 0) return;
+  rs.stayMin[flexIndex] = Math.min(flexMaxFor(flexIndex), Math.max(minStayFor(flexIndex), rs.stayMin[flexIndex] + delta));
+  rs.overrideEnd[flexIndex] = null;
+  renderRun();
+}
+function autoAdjustToTarget(){
+  const rs = runState;
+  const stops = rs.course.stops;
+  const times = computeRunSchedule();
+  const finalActual = times[stops.length - 1].start;
+  let remaining = finalActual - toMin(rs.targetArrival);
+  if(remaining <= 0) return;
+
+  const flexIndex = rs.course.flexIndex;
+  const order = flexIndex >= 0
+    ? [flexIndex, ...stops.map((_, i) => i).filter(i => i !== flexIndex)]
+    : stops.map((_, i) => i);
+
+  for(const i of order){
+    if(remaining <= 0) break;
+    if(stops[i].type !== 'visit' || rs.overrideStart[i] !== null || rs.overrideEnd[i] !== null) continue;
+    const min = minStayFor(i);
+    const capacity = Math.max(0, rs.stayMin[i] - min);
+    const take = Math.min(capacity, remaining);
+    rs.stayMin[i] -= take;
+    remaining -= take;
+  }
+  renderRun();
+}
+
+boot();
+</script>
+</body>
+</html>
